@@ -1,5 +1,5 @@
 # Fairplay
- Fairplay is a library for the procedural generation of random scientific charts.
+ Fairplay is a library for the procedural generation of random scientific charts and corresponding labeled images for the training of image segmentation models.
 
 ## Installation
 Clone the repository. From within `fairplay/`:
