@@ -2,14 +2,10 @@ import cv2
 import numpy as np
 import matplotlib.pyplot as plt
 import scipy.ndimage as ndimage
-
-try:
-    import Image
-except ImportError:
-    from PIL import Image
+from PIL import Image
 import pytesseract as tes
 
-def match_yticks(labels,tick_list):
+def match_yticks(labels, tick_list):
     tick_lens = [abs(tick[2]-tick[0]) for tick in tick_list]
     max_tick_len = max(tick_lens)
     score_list = []
@@ -28,7 +24,8 @@ def match_yticks(labels,tick_list):
     min_score_inds = score_array.argmin(axis=0)
     return(min_score_inds.tolist())
 
-def match_xticks(labels,tick_list):
+def match_xticks(labels_df, tick_list):
+
     tick_lens = [abs(tick[1]-tick[3]) for tick in tick_list]
     max_tick_len = max(tick_lens)
     score_list = []
@@ -36,8 +33,8 @@ def match_xticks(labels,tick_list):
         south_pt = [tick[0], min(tick[1],tick[3])]
         tick_len = abs(tick[1]-tick[3])
         tick_score = []
-        for i,row in enumerate(labels):
-            dist_vec = np.array(south_pt)-np.array([row[5],row[6]])
+        for ii, row in labels_df.iterrows():
+            dist_vec = np.array(south_pt)-np.array([row['x_mid'], row['y_mid']])
             dist_score = np.linalg.norm(dist_vec,2)
             len_score = max_tick_len-tick_len
             this_tick_score = dist_score+len_score
@@ -47,18 +44,41 @@ def match_xticks(labels,tick_list):
     min_score_inds = score_array.argmin(axis=0)
     return(min_score_inds.tolist())
 
-def get_xticks(nbw,xax,tickMargin=11,minTickLen=0,maxGap=0):
+def get_xticks(nbw, xax, tickMargin=11, minTickLen=0, maxGap=0):
+
     # Crop the black and white image so only the area around the x-axis exists
-    m,n=nbw.shape
+    m, n = nbw.shape
     xaxImg = np.zeros([m,n])
-    xaxImg[xax[1]-tickMargin:xax[1]+tickMargin, xax[0]-1:xax[2]+1] = nbw[xax[1]-tickMargin:xax[1]+tickMargin, xax[0]-1:xax[2]+1]
+    xaxImg[
+        xax[1] - tickMargin:xax[1] + tickMargin,
+        xax[0] - 1:xax[2] + 1
+        ] = \
+            nbw[
+                xax[1] - tickMargin:xax[1] + tickMargin,
+                xax[0]-1:xax[2] + 1
+                ]
     xaxImg = xaxImg.astype('uint8')
+
     # Hough Transform to obtain the vertical lines, then sort by x-coordinate
-    xTicksHough = np.reshape(cv2.HoughLinesP(xaxImg,1,np.pi,2, minLineLength = minTickLen, maxLineGap = maxGap),(-1,4))
+    xTicksHough = np.reshape(
+        cv2.HoughLinesP(
+            xaxImg,
+            1,
+            np.pi,
+            2,
+            minLineLength=minTickLen, 
+            maxLineGap=maxGap
+            ),
+        (-1,4)
+        )
+    
     # xTicksLen = np.absolute(np.diff(xTicksHough[:,[1,3]],axis=1))
     # xticksx = xTicksHough[:,0]
+    
     xtsort = xTicksHough[xTicksHough[:,0].argsort()]
+    
     return xtsort
+
 
 def get_yticks(nbw,yax,tickMargin=11,minTickLen=0,maxGap=0):
     # Crop the black and white image so only the area around the y-axis exists
@@ -92,7 +112,7 @@ def iso_lines(lines,minspace=5):
             else:
                 diff = 0
 
-            if diff < minspace and diff is not 0:
+            if diff < minspace and diff != 0:
                 del lines[index]
     return np.array(lines)
 
