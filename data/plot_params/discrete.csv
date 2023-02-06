@@ -1,0 +1,58 @@
+markers,line_styles,colors,bg_colors,tick_directions,point_dist,font_weights,font_styles,font_names
+o,solid,b,w,in,uniform,regular,normal,data/fonts/ARIAL.TTF
+v,dashed,g,0.98,out,linear,bold,italic,data/fonts/ARIALBD.TTF
+^,dashdot,r,0.96,inout,quadratic,regular,normal,data/fonts/ARIALBI.TTF
+<,dotted,k,0.94,,,regular,normal,data/fonts/ARIALI.TTF
+>,solid,0.05,0.92,,,regular,normal,data/fonts/ARIALUNI.TTF
+s,solid,0.1,0.9,,,,,data/fonts/CALIBRI.TTF
+p,dashed,0.15,xkcd:sand,,,,,data/fonts/CALIBRIB.TTF
+*,dashed,0.2,xkcd:light grey,,,,,data/fonts/CALIBRII.TTF
+h,None,0.25,xkcd:light yellow,,,,,data/fonts/CALIBRIL.TTF
+H,None,xkcd:purple,xkcd:cream,,,,,data/fonts/CALIBRILI.TTF
++,None,xkcd:pink,xkcd:off white,,,,,data/fonts/CALIBRIZ.TTF
+x,None,xkcd:brown,xkcd:eggshell,,,,,data/fonts/CAMBRIAB.TTF
+D,None,xkcd:light blue,xkcd:pale grey,,,,,data/fonts/CAMBRIAI.TTF
+d,None,xkcd:teal,xkcd:very light pink,,,,,data/fonts/CAMBRIAZ.TTF
+o,None,xkcd:orange,xkcd:pale,,,,,data/fonts/CONSOLA.TTF
+o,None,xkcd:light green,xkcd:light light blue,,,,,data/fonts/CONSOLAB.TTF
+o,,xkcd:magenta,w,,,,,data/fonts/CONSOLAI.TTF
+o,,xkcd:olive,w,,,,,data/fonts/CONSOLAZ.TTF
+o,,xkcd:maroon,w,,,,,data/fonts/COUR.TTF
+s,,xkcd:forest green,w,,,,,data/fonts/COURBD.TTF
+s,,xkcd:royal blue,w,,,,,data/fonts/COURBI.TTF
+s,,xkcd:dark pink,w,,,,,data/fonts/COURI.TTF
+s,,xkcd:periwinkle,w,,,,,data/fonts/DejaVuSans.ttf
+s,,xkcd:sea green,w,,,,,data/fonts/DejaVuSansMono-Bold.ttf
+D,,xkcd:lime,w,,,,,data/fonts/DejaVuSansMono.ttf
+D,,xkcd:indigo,w,,,,,data/fonts/DejaVuSerif-Bold.ttf
+D,,xkcd:burnt orange,w,,,,,data/fonts/DejaVuSerif.ttf
+D,,xkcd:rose,w,,,,,data/fonts/L_10646.TTF
+D,,xkcd:navy,w,,,,,data/fonts/MathJax_Main-Bold.otf
+,,xkcd:plum,w,,,,,data/fonts/MathJax_Main-Italic.otf
+,,xkcd:brick red,w,,,,,data/fonts/MathJax_Main-Regular.otf
+,,xkcd:dark teal,w,,,,,data/fonts/MathJax_SansSerif-Bold.otf
+,,xkcd:gold,,,,,,data/fonts/MathJax_SansSerif-Italic.otf
+,,xkcd:burgundy,,,,,,data/fonts/MathJax_SansSerif-Regular.otf
+,,xkcd:bright pink,,,,,,data/fonts/MathJax_Typewriter-Regular.otf
+,,xkcd:cerulean,,,,,,data/fonts/MICROSS.TTF
+,,xkcd:light red,,,,,,data/fonts/PALA.TTF
+,,k,,,,,,data/fonts/PALAB.TTF
+,,k,,,,,,data/fonts/PALABI.TTF
+,,k,,,,,,data/fonts/PALAI.TTF
+,,k,,,,,,data/fonts/SEGOEUI.TTF
+,,k,,,,,,data/fonts/SEGOEUIB.TTF
+,,k,,,,,,data/fonts/SEGOEUII.TTF
+,,k,,,,,,data/fonts/SEGOEUIL.TTF
+,,k,,,,,,data/fonts/SEGOEUISL.TTF
+,,k,,,,,,data/fonts/SEGOEUIZ.TTF
+,,k,,,,,,data/fonts/SEGUISB.TTF
+,,k,,,,,,data/fonts/TAHOMA.TTF
+,,k,,,,,,data/fonts/TAHOMABD.TTF
+,,k,,,,,,data/fonts/TIMES.TTF
+,,k,,,,,,data/fonts/TIMESBD.TTF
+,,k,,,,,,data/fonts/TIMESBI.TTF
+,,k,,,,,,data/fonts/TIMESI.TTF
+,,k,,,,,,data/fonts/VERDANA.TTF
+,,k,,,,,,data/fonts/VERDANAB.TTF
+,,,,,,,,data/fonts/VERDANAI.TTF
+,,,,,,,,data/fonts/VERDANAZ.TTF

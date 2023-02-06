@@ -1,5 +1,4 @@
 import matplotlib
-matplotlib.use('Agg') #To make sure plots are not being displayed during the generation.
 import matplotlib.pyplot as plt
 from matplotlib import font_manager
 from matplotlib.colors import to_rgb
@@ -11,12 +10,14 @@ import pandas as pd
 from tqdm import tqdm
 
 import numpy as np
-np.random.seed(0) #For consistent data generation.
 import scipy.stats as stats
 
 from PIL import Image
 import cv2
 import copy
+
+matplotlib.use('Agg')  #To make sure plots are not being displayed during the generation.
+np.random.seed(0)  #For consistent data generation.
 
 
 ### SET UP PARAMETER SAMPLING #####
@@ -83,12 +84,10 @@ def dist_sample(name, dfd, dfc):
     """
     
     try:
-        
         thresh = float(name)
         return np.random.rand()<thresh
 
     except:
-        
         if name in dfc.index.values:
             return continuous_sample(dfc, name)
         elif name in dfd.columns:
@@ -124,7 +123,7 @@ def generate_figure(figwidth=5, figaspect=1.25, dpi=150, facecolor='w'):
     and facecolor
     """
     
-    figsize = (figwidth, figwidth/figaspect)
+    figsize = (figwidth, figwidth / figaspect)
     fig = plt.figure(figsize=figsize, dpi=dpi)
     ax = plt.gca()
     plt.minorticks_on()
@@ -191,15 +190,17 @@ def power_data_gen(
             10 ** x_min + 10 ** x_range,
             int(n_points)
             )
-        x_spacing='linear'
+        x_spacing = 'linear'
     
     Y = poly_scale * X ** poly_deg
     
-    y_spacing = \
-        'linear'
-            if max(Y) * min(Y) < 0
-            or np.abs(np.log10(max(Y) / min(Y))) < log_cutoff
-        else 'log'
+    if (
+        (max(Y) * min(Y) < 0)
+        or (np.abs(np.log10(max(Y) / min(Y))) < log_cutoff)
+    ):
+        y_spacing = 'linear'
+    else:
+        y_spacing = 'log'
 
     if y_spacing == 'log' and np.any(Y < 0):
         Y = np.abs(Y)
@@ -215,59 +216,62 @@ def power_data_gen(
 ### FULL PLOT GENERATION ###
 
 def generate_training_plot(data_folder, id_str, label_colors):
-    
     """
     Given a folder and the ID# for a new random plot, generate it and stick
     it in the folder
     """
-    
+
     ### GENERATE FIGURE ###
-    fig_kwargs = build_kw_dict('plot_params/fig_properties.csv')
+    fig_kwargs = build_kw_dict('data/plot_params/fig_properties.csv')
     fig, ax = generate_figure(**fig_kwargs)
 
     ### PLOT DATA ###
-    data_kwargs = build_kw_dict('plot_params/data_gen.csv')
-    marker_kwargs = build_kw_dict('plot_params/marker_styles.csv')
+    data_kwargs = build_kw_dict('data/plot_params/data_gen.csv')
+    marker_kwargs = build_kw_dict('data/plot_params/marker_styles.csv')
     X, Y, Ye, x_spacing, y_spacing = power_data_gen(**data_kwargs)
-    ax.plot(X, Y+Ye, **marker_kwargs)
-    ax.set_xscale(x_spacing, nonpositive='clip')
-    ax.set_yscale(y_spacing, nonpositive='clip')
+    ax.plot(X, Y + Ye, **marker_kwargs)
+    ax.set_xscale(x_spacing)
+    ax.set_yscale(y_spacing)
 
     ### ERROR BARS ###
-    error_kwargs = build_kw_dict('plot_params/errorbar_styles.csv')
-    error_kwargs['linestyle']='None'
+    error_kwargs = build_kw_dict('data/plot_params/errorbar_styles.csv')
+    error_kwargs['linestyle'] = 'None'
     ax.errorbar(
         X,
-        Y+Ye,
-        yerr=Y * data_kwargs['noise_std_prct'] / 100,
+        Y + Ye,
+        yerr=np.abs(Y * data_kwargs['noise_std_prct'] / 100),
         **error_kwargs
-        )
+    )
 
     ### BOX AND GRID ###
-    plt_bools = build_kw_dict('plot_params/plt_boolean.csv')
-    for k,v in plt_bools.items():
-        eval('plt.{}({})'.format(k,v))
-    plt.grid(True) # Whether or not grid shows up gets varied in tick_params
+    plt_bools = build_kw_dict('data/plot_params/plt_boolean.csv')
+    for k, v in plt_bools.items():
+        eval('plt.{}({})'.format(k, v))
+    plt.grid(True)  # Whether or not grid shows up gets varied in tick_params
 
     ### TICKS ###
-    tick_param_kwargs = build_kw_dict('plot_params/tick_params_major.csv')
+    tick_param_kwargs = build_kw_dict('data/plot_params/tick_params_major.csv')
     ax.tick_params(which='major', **tick_param_kwargs)
 
-    tick_param_minor_kwargs = build_kw_dict('plot_params/tick_params_minor.csv')
+    tick_param_minor_kwargs = build_kw_dict('data/plot_params/tick_params_minor.csv')
     ax.tick_params(which='minor', **tick_param_minor_kwargs)
 
     ### TICK LABELS ###
-    tick_font = font_manager.FontProperties(**build_kw_dict('plot_params/font_properties.csv'))
+    tick_font = font_manager.FontProperties(**build_kw_dict('data/plot_params/font_properties.csv'))
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontproperties(tick_font)
 
     plt.tight_layout()
     
     ### SAVE RAW AND LABELED IMAGES ###
-    fig.savefig('{}/{}.png'.format(data_folder, id_str), facecolor=fig.get_facecolor(), edgecolor='none')
+    fig.savefig(
+        '{}/{}.png'.format(data_folder, id_str),
+        facecolor=fig.get_facecolor(),
+        edgecolor='none'
+    )
     label_img_array = generate_label_image(fig, ax, label_colors)
     label_img = Image.fromarray(label_img_array)
-    label_img.save('{}/{}.png'.format(data_folder+'_labels', id_str))
+    label_img.save('{}/{}.png'.format(data_folder + '_labels', id_str))
     
     return fig, ax
 
@@ -286,12 +290,12 @@ def generate_label_image(fig, ax, label_colors):
     mask_dict = {}
     # probably need some defensive code to check the label_colors dict
     
-    bg_color = np.array([int(c*255) for c in fig.get_facecolor()])[:3].astype(np.uint8)
+    bg_color = np.array([int(c * 255) for c in fig.get_facecolor()])[:3].astype(np.uint8)
 
     kids = ax.get_children()
     
     ### MARKERS ###
-    visible = [1]
+    visible = [0,1]
     for i in range(len(kids)):
         if i not in visible:
             kids[i].set_visible(False)
@@ -300,7 +304,7 @@ def generate_label_image(fig, ax, label_colors):
             kids[i].set_linestyle('None')
     
     fig.canvas.draw()
-    class_img = np.array(fig.canvas.renderer._renderer)[:,:,:3]
+    class_img = np.array(fig.canvas.renderer._renderer)[:, :, :3]
     mask_dict['markers'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
     
 #     ### ERROR BARS ###
@@ -331,19 +335,19 @@ def generate_label_image(fig, ax, label_colors):
         
         # Generate tick mask
         fig.canvas.draw_idle()
-        class_img = np.array(fig.canvas.renderer._renderer)[:,:,:3]
-        mask_dict[aa+'_ticks'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
+        class_img = np.array(fig.canvas.renderer._renderer)[:, :, :3]
+        mask_dict[aa + '_ticks'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
         
         # Make only the tick labels visible
         axis.set_major_formatter(mlf)
-        [[ch.set_visible(False) for ch in tick.get_children() if not hasattr(ch,'_text')] for tick in axis.get_major_ticks()]
+        [[ch.set_visible(False) for ch in tick.get_children() if not hasattr(ch, '_text')] for tick in axis.get_major_ticks()]
         [g.set_visible(False) for g in axis.get_gridlines()]
         
         # Generate label mask
         fig.canvas.draw_idle()
-        class_img = np.array(fig.canvas.renderer._renderer)[:,:,:3]
-        cv2.imwrite('temp/label_test.png',class_img)
-        mask_dict[aa+'_tick_labels'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
+        class_img = np.array(fig.canvas.renderer._renderer)[:, :, :3]
+        cv2.imwrite('temp/label_test.png', class_img)
+        mask_dict[aa + '_tick_labels'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
         
         # Reset visibilities
         [k.set_visible(True) for k in kids]
@@ -357,7 +361,7 @@ def generate_label_image(fig, ax, label_colors):
     for kk, mm in mask_dict.items():
         label_image = set_color_mask(label_image, mm, label_colors[kk])
     
-    bg_mask = np.all(label_image==np.zeros(3).astype(np.uint8), axis=-1)
+    bg_mask = np.all(label_image == np.zeros(3).astype(np.uint8), axis=-1)
     label_image = set_color_mask(label_image, bg_mask, label_colors['background'])
 
     return label_image
@@ -365,7 +369,7 @@ def generate_label_image(fig, ax, label_colors):
 
 def str2color(color_string):
     """ Convert color string to uint8 array representation """
-    return (np.array(to_rgb(color_string))*255).astype(np.uint8)
+    return (np.array(to_rgb(color_string)) * 255).astype(np.uint8)
 
 
 def set_color_mask(A, M, c):
@@ -373,17 +377,17 @@ def set_color_mask(A, M, c):
     Apply color c (3,) to pixels in array A at locations M
     """
     for i in range(3):
-        A_i = A[:,:,i]
-        A_i[M]=c[i]
-        A[:,:,i] = A_i
+        A_i = A[:, :, i]
+        A_i[M] = c[i]
+        A[:, :, i] = A_i
     return A
 
 
 ### DISCRETE PARAMETERS ###
-dfd = pd.read_csv('plot_params/discrete.csv')
+dfd = pd.read_csv('data/plot_params/discrete.csv')
 
 ### CONTINUOUS PARAMETERS ###
-dfc = pd.read_csv('plot_params/continuous.csv', index_col='param')
+dfc = pd.read_csv('data/plot_params/continuous.csv', index_col='param')
 dfc['sampler'] = \
     dfc.apply(
         lambda row:
@@ -432,23 +436,23 @@ def generate_dataset(
         }
 
     df_lc = pd.DataFrame.from_dict(label_colors).transpose().reset_index()
-    df_lc.columns=['name','r','g','b']
-    df_lc.to_csv(os.path.join(base_folder,'class_dict.csv'), index=False)
+    df_lc.columns = ['name', 'r', 'g', 'b']
+    df_lc.to_csv(os.path.join(base_folder, 'class_dict.csv'), index=False)
 
     ### GENERATE PLOT IMAGES AND CLASS LABEL IMAGES ###
     for dataset in ['train', 'test']:
         os.makedirs(os.path.join(base_folder, dataset), exist_ok=True)
-        os.makedirs(os.path.join(base_folder, dataset+'_labels'), exist_ok=True)
+        os.makedirs(os.path.join(base_folder, dataset + '_labels'), exist_ok=True)
 
     for dataset in ['train', 'test']:
         print('Generating ', dataset)
-        for i in tqdm(range(eval('num_'+dataset))):
+        for i in tqdm(range(eval('num_' + dataset))):
             data_folder = os.path.join(base_folder, dataset)
             fig, ax = generate_training_plot(
                 data_folder,
                 str(i).zfill(6),
                 label_colors
-                )
+            )
             plt.close(fig)
 
     return
