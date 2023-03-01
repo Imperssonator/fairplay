@@ -21,9 +21,10 @@ python ./src/fairplay/gen/generate_random_scatter.py ./data/demo -n 20 -t 10
 ## Example Output
 
 ### Simulated Plot
-![simulated](data/demo/train/000014.png)
+![simulated](data/demo/train/000014.png) ![simulated2](data/demo/train/000004.png) ![simulated3](data/demo/train/000013.png)
 
 ### With Class Labels
-![labeled](data/demo/train_labels/000014.png)
+![labeled](data/demo/train_labels/000014.png) ![labeled2](data/demo/train_labels/000004.png) ![labeled3](data/demo/train_labels/000013.png)
+
 
 RGB values for class labels (e.g. x ticks, markers, background) are defined as `label_colors` in `generate_random_scatter.py`
