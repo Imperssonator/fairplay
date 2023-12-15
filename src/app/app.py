@@ -9,9 +9,12 @@ if uploaded_file is not None:
     # Convert the file to an opencv image.
     file_bytes = np.asarray(bytearray(uploaded_file.read()), dtype=np.uint8)
     cv2_img = cv2.imdecode(file_bytes, 1)
-
-    # Now do something with the image! For example, let's display it:
-    st.image(cv2_img, channels="BGR")
-
     et = Extractor(cv2_img)
 
+    # Show the image
+    st.image(et.img, channels="BGR")
+
+    # Find axes
+    et = et.find_axes()
+
+    st.image(et.imlabel, channels="BGR")
