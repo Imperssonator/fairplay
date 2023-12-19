@@ -1,8 +1,8 @@
 # Fairplay
- Fairplay is a library for the procedural generation of random scientific charts and corresponding labeled images for the training of image segmentation models.
+ Fairplay is a library built with the goal of enabling fully automated extraction of data from plots. One of the primary components is a plot simulator which can be used to generate training images for various tasks.
 
 ## Installation
-Clone the repository. From within `fairplay/`:
+Clone the repository. Then, from within `fairplay/`:
 ```
 pip install -e ./
 ```

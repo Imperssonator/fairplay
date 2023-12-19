@@ -8,8 +8,8 @@ def find_xaxis(
     thresh=2,
     max_line_gap=3,
     target_cos=1,
-    target_frac_len=0.7,
-    target_frac_mpos=0.8,
+    target_frac_len=0.9,
+    target_frac_mpos=0.9,
 ):
     """
     Given a binary array bw_img, return the endpoints
@@ -92,8 +92,8 @@ def find_yaxis(
     thresh=2,
     max_line_gap=3,
     target_cos=0,
-    target_frac_len=0.7,
-    target_frac_npos=0.2,
+    target_frac_len=0.9,
+    target_frac_npos=0.1,
 ):
     """
     Given a binary array bw_img, return the endpoints

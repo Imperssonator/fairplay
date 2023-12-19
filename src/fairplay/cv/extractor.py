@@ -1,5 +1,6 @@
 import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 from fairplay.cv.lines import find_xaxis, find_yaxis
 
 class Extractor:
@@ -10,6 +11,19 @@ class Extractor:
         self.gray = cv2.cvtColor(self.img, cv2.COLOR_BGR2GRAY)
         self.bw = cv2.adaptiveThreshold(self.gray, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY_INV, 25, 5)
         self.imlabel = self.img.copy()
+
+
+    def show(self, imtype="imlabel"):
+        if imtype == "imlabel":
+            fig = plt.figure()
+            implot = plt.imshow(self.imlabel)
+            return fig, implot
+        elif imtype == "bw":
+            fig = plt.figure()
+            implot = plt.imshow(self.bw, cmap="gray")
+            return fig, implot
+        else:
+            return
         
 
     def find_axes(self):
