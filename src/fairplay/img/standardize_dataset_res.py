@@ -22,7 +22,7 @@ def standardize_dataset_res(data_dir, width=512, height=512):
 
     for p in tqdm(all_imgs):
         img = Image.open(p)
-        img = img.resize((height,width))
+        img = img.resize((height, width))
         new_path = p.replace(dataset, new_dataset)
         os.makedirs(os.path.split(new_path)[0], exist_ok=True)
         # print(p)

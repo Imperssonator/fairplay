@@ -1,0 +1,10 @@
+name,r,g,b
+markers,3,67,223
+x_ticks,132,0,0
+x_tick_labels,229,0,0
+x_axis_label,255,71,76
+y_ticks,6,71,12
+y_tick_labels,21,176,26
+y_axis_label,150,249,123
+error_bars,54,55,55
+background,255,255,212

@@ -18,6 +18,18 @@ python ./src/fairplay/gen/generate_random_scatter.py ./data/demo -n 20 -t 10
 - `-n 20`: 20 training images
 - `-t 10`: 10 test images
 
+### Simulation Config
+
+Simulation parameters are configured in `data/plot_params`. There are two key files:
+
+* `continuous.csv`: parameters to define a truncated normal distribution from which to sample continuously-defined plotting arguments, like `marker_alpha`. Attributes are:
+    * `min`: lowest allowable value
+    * `max`: highest allowable value
+    * `mean`: if specified, can place the mean of the truncated normal somewhere other than the midpoint of min and max, which is the default
+    * `n_stds`: number of SD's of the normal distribution to "fit" between min and max. Default is 1, and if `mean` is also unspecified, this means the amplitude of the truncated normal PDF at `min` and `max` will be that of -1 and +1 SD. Higher values will result in more concentrated sampling near the mean and less at the edges.
+* `discrete.csv`: literally-defined Lists on which to perform uniform sampling of discretely-defined plotting arguments, such as `marker_style`. To weight a member more heavily, simply add more copies of that member to the list. Very rudimentary.
+
+
 ## Example Output
 
 RGB values for class labels (e.g. x ticks, markers, background) are defined as `label_colors` in `generate_random_scatter.py`

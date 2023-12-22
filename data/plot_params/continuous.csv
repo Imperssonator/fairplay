@@ -8,7 +8,7 @@ tick_lengths_major,1,12,10,
 tick_lengths_minor,1,8,6,
 pads,2,18,,
 font_sizes,8,20,,
-n_points,3,100,10,
+n_points,3,30,10,3
 x_min,-6,6,,
 x_range,0,6,1,2
 noise_std_prct,0,50,20,
