@@ -274,23 +274,23 @@ def generate_training_plot(
         eval('plt.{}({})'.format(k, v))
     plt.grid(True)  # Whether or not grid shows up gets varied in tick_params
 
-    # AXIS LABELS #
-    plt.xlabel(generate_random_axis_label(dfu))
-    plt.ylabel(generate_random_axis_label(dfu))
-
     # TICKS #
     tick_param_kwargs = build_kw_dict('data/plot_params/tick_params_major.csv', dfd, dfc, dfu)
     ax.tick_params(which='major', **tick_param_kwargs)
-
     tick_param_minor_kwargs = build_kw_dict('data/plot_params/tick_params_minor.csv', dfd, dfc, dfu)
     ax.tick_params(which='minor', **tick_param_minor_kwargs)
 
     # TICK LABELS #
-    tick_font = font_manager.FontProperties(**build_kw_dict('data/plot_params/font_properties.csv', dfd, dfc, dfu))
+    tick_font_kwargs = build_kw_dict('data/plot_params/font_properties.csv', dfd, dfc, dfu)
+    tick_font = font_manager.FontProperties(**tick_font_kwargs)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontproperties(tick_font)
     ax.xaxis.get_label().set_font_properties(tick_font)
     ax.yaxis.get_label().set_font_properties(tick_font)
+
+    # AXIS LABELS #
+    plt.xlabel(generate_random_axis_label(dfu), color=tick_param_kwargs["labelcolor"])
+    plt.ylabel(generate_random_axis_label(dfu), color=tick_param_kwargs["labelcolor"])
 
     plt.tight_layout()
     
@@ -370,7 +370,10 @@ def generate_label_image(fig, ax, label_colors):
 
         # Make only the tick labels visible
         axis.set_major_formatter(mlf)  # This brings back the tick labels
-        [[ch.set_visible(False) for ch in tick.get_children() if not hasattr(ch, '_text')] for tick in axis.get_major_ticks()]
+        [
+            [ch.set_visible(False) for ch in tick.get_children() if not hasattr(ch, '_text')]
+            for tick in axis.get_major_ticks()
+            ]
 
         # Generate label mask
         fig.canvas.draw_idle()
@@ -378,7 +381,8 @@ def generate_label_image(fig, ax, label_colors):
         mask_dict[aa + '_tick_labels'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
 
         # Make only the axis labels visible
-        axis.set_major_formatter(plt.NullFormatter())  # This makes the tick labels invisible
+        # axis.set_major_formatter(plt.NullFormatter())  # This makes the tick labels invisible
+        axis.set_tick_params(which="major", labelcolor=tuple(bg_color / 255))  # No, THIS makes the tick labels "invisible".. but it is irreversible
         axis.get_label().set_visible(True)
 
         # Generate axis label mask
