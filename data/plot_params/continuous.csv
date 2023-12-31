@@ -7,14 +7,14 @@ line_widths,0,3,1,
 tick_lengths_major,1,12,10,
 tick_lengths_minor,1,8,6,
 pads,2,18,,
-font_sizes,8,20,,
-n_points,3,30,10,3
+font_sizes,8,20,12,1.5
+n_points,3,30,10,2
 x_min,-6,6,,
 x_range,0,6,1,2
 noise_std_prct,0,50,20,
 poly_scale,-5,5,,
 poly_deg,-3,3,,
-marker_size,3,12,,
+marker_size,2,12,6,1.5
 cap_size,0,8,2,
 axes_label_size,10,16,,
 tick_label_size,10,16,,

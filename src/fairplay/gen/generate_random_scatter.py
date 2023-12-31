@@ -216,7 +216,7 @@ def power_data_gen(
 
 def generate_random_axis_label(dfu):
     """Using units of measure dataset, generate a random axis label"""
-    if np.random.rand() > 0.5:
+    if np.random.rand() < 0.5:
         lb = "("
         rb = ")"
     else:
@@ -259,14 +259,15 @@ def generate_training_plot(
     ax.set_yscale(y_spacing)
 
     # ERROR BARS #
-    error_kwargs = build_kw_dict('data/plot_params/errorbar_styles.csv', dfd, dfc, dfu)
-    error_kwargs['linestyle'] = 'None'
-    ax.errorbar(
-        X,
-        Y + Ye,
-        yerr=np.abs(Y * data_kwargs['noise_std_prct'] / 100),
-        **error_kwargs
-    )
+    if np.random.rand() > 0.5:
+        error_kwargs = build_kw_dict('data/plot_params/errorbar_styles.csv', dfd, dfc, dfu)
+        error_kwargs['linestyle'] = 'None'
+        ax.errorbar(
+            X,
+            Y + Ye,
+            yerr=np.abs(Y * data_kwargs['noise_std_prct'] / 100),
+            **error_kwargs
+        )
 
     # BOX AND GRID #
     plt_bools = build_kw_dict('data/plot_params/plt_boolean.csv', dfd, dfc, dfu)
@@ -285,12 +286,21 @@ def generate_training_plot(
     tick_font = font_manager.FontProperties(**tick_font_kwargs)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontproperties(tick_font)
-    ax.xaxis.get_label().set_font_properties(tick_font)
-    ax.yaxis.get_label().set_font_properties(tick_font)
 
     # AXIS LABELS #
     plt.xlabel(generate_random_axis_label(dfu), color=tick_param_kwargs["labelcolor"])
     plt.ylabel(generate_random_axis_label(dfu), color=tick_param_kwargs["labelcolor"])
+    ax.xaxis.get_label().set_font_properties(tick_font)
+    ax.yaxis.get_label().set_font_properties(tick_font)
+
+    # LEGEND #
+    if np.random.rand() < 0.35:
+        # legend_kwargs = build_kw_dict('data/plot_params/legend.csv')
+        plt.legend(
+            [dfu.sample(1).iloc[0].Name[:15]],
+            prop=tick_font,
+            labelcolor=tick_param_kwargs["labelcolor"]
+        )
 
     plt.tight_layout()
     
