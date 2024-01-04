@@ -20,7 +20,7 @@ matplotlib.use('Agg')  #To make sure plots are not being displayed during the ge
 np.random.seed(0)  #For consistent data generation.
 
 
-### SET UP PARAMETER SAMPLING #####
+# SET UP PARAMETER SAMPLING ###
 def discrete_sample(df, param):
     """
     Given a dataframe with column names corresponding
@@ -73,8 +73,7 @@ def trunc_norm_sampler(lower, upper, mu, n_stds):
     return X
 
 
-def dist_sample(name, dfd, dfc):
-    
+def dist_sample(name, dfd, dfc, dfu):
     """
     'name' will either be a binary probability between 0 and 1
     or the name of a distribution in either dfc or dfd
@@ -92,12 +91,14 @@ def dist_sample(name, dfd, dfc):
             return continuous_sample(dfc, name)
         elif name in dfd.columns:
             return discrete_sample(dfd, name)
+        elif name=="axis_label":
+            return generate_random_axis_label(dfu)
         else:
             print('No distribution named {}'.format(name))
             return None
 
 
-def build_kw_dict(kwcsv):
+def build_kw_dict(kwcsv, dfd, dfc, dfu):
     """
     A kwcsv file has two columns: param and dist
     param refers to a field of kwargs for a matplotlib function
@@ -107,7 +108,7 @@ def build_kw_dict(kwcsv):
     
     df = pd.read_csv(kwcsv)
     kw_dict = {
-        p: dist_sample(d, dfd, dfc)
+        p: dist_sample(d, dfd, dfc, dfu)
         for p, d
         in zip( df['param'], df['dist'] )
         }
@@ -115,7 +116,7 @@ def build_kw_dict(kwcsv):
     return kw_dict
 
 
-### FIGURE GENERATION ###
+# FIGURE GENERATION #
 
 def generate_figure(figwidth=5, figaspect=1.25, dpi=150, facecolor='w'):
     """
@@ -133,7 +134,7 @@ def generate_figure(figwidth=5, figaspect=1.25, dpi=150, facecolor='w'):
     return fig, ax
 
 
-### DATA GENERATION ###
+# DATA GENERATION #
 
 def power_data_gen(
     x_min=0,
@@ -213,57 +214,97 @@ def power_data_gen(
     return X, Y, Y_err, x_spacing, y_spacing
 
 
-### FULL PLOT GENERATION ###
+def generate_random_axis_label(dfu):
+    """Using units of measure dataset, generate a random axis label"""
+    if np.random.rand() < 0.5:
+        lb = "("
+        rb = ")"
+    else:
+        lb = "["
+        rb = "]"
+    
+    dfu_row = dfu.sample(1).iloc[0]
+    title = dfu_row.Name
+    units = dfu_row.Symbol
+    axis_label = f"{title} {lb}{units}{rb}"
 
-def generate_training_plot(data_folder, id_str, label_colors):
+    return axis_label
+
+
+# FULL PLOT GENERATION #
+
+def generate_training_plot(
+    data_folder,
+    id_str,
+    label_colors,
+    dfd,
+    dfc,
+    dfu
+):
     """
     Given a folder and the ID# for a new random plot, generate it and stick
     it in the folder
     """
 
-    ### GENERATE FIGURE ###
-    fig_kwargs = build_kw_dict('data/plot_params/fig_properties.csv')
+    # GENERATE FIGURE #
+    fig_kwargs = build_kw_dict('data/plot_params/fig_properties.csv', dfd, dfc, dfu)
     fig, ax = generate_figure(**fig_kwargs)
 
-    ### PLOT DATA ###
-    data_kwargs = build_kw_dict('data/plot_params/data_gen.csv')
-    marker_kwargs = build_kw_dict('data/plot_params/marker_styles.csv')
+    # PLOT DATA #
+    data_kwargs = build_kw_dict('data/plot_params/data_gen.csv', dfd, dfc, dfu)
+    marker_kwargs = build_kw_dict('data/plot_params/marker_styles.csv', dfd, dfc, dfu)
     X, Y, Ye, x_spacing, y_spacing = power_data_gen(**data_kwargs)
     ax.plot(X, Y + Ye, **marker_kwargs)
     ax.set_xscale(x_spacing)
     ax.set_yscale(y_spacing)
 
-    ### ERROR BARS ###
-    error_kwargs = build_kw_dict('data/plot_params/errorbar_styles.csv')
-    error_kwargs['linestyle'] = 'None'
-    ax.errorbar(
-        X,
-        Y + Ye,
-        yerr=np.abs(Y * data_kwargs['noise_std_prct'] / 100),
-        **error_kwargs
-    )
+    # ERROR BARS #
+    if np.random.rand() > 0.5:
+        error_kwargs = build_kw_dict('data/plot_params/errorbar_styles.csv', dfd, dfc, dfu)
+        error_kwargs['linestyle'] = 'None'
+        ax.errorbar(
+            X,
+            Y + Ye,
+            yerr=np.abs(Y * data_kwargs['noise_std_prct'] / 100),
+            **error_kwargs
+        )
 
-    ### BOX AND GRID ###
-    plt_bools = build_kw_dict('data/plot_params/plt_boolean.csv')
+    # BOX AND GRID #
+    plt_bools = build_kw_dict('data/plot_params/plt_boolean.csv', dfd, dfc, dfu)
     for k, v in plt_bools.items():
         eval('plt.{}({})'.format(k, v))
     plt.grid(True)  # Whether or not grid shows up gets varied in tick_params
 
-    ### TICKS ###
-    tick_param_kwargs = build_kw_dict('data/plot_params/tick_params_major.csv')
+    # TICKS #
+    tick_param_kwargs = build_kw_dict('data/plot_params/tick_params_major.csv', dfd, dfc, dfu)
     ax.tick_params(which='major', **tick_param_kwargs)
-
-    tick_param_minor_kwargs = build_kw_dict('data/plot_params/tick_params_minor.csv')
+    tick_param_minor_kwargs = build_kw_dict('data/plot_params/tick_params_minor.csv', dfd, dfc, dfu)
     ax.tick_params(which='minor', **tick_param_minor_kwargs)
 
-    ### TICK LABELS ###
-    tick_font = font_manager.FontProperties(**build_kw_dict('data/plot_params/font_properties.csv'))
+    # TICK LABELS #
+    tick_font_kwargs = build_kw_dict('data/plot_params/font_properties.csv', dfd, dfc, dfu)
+    tick_font = font_manager.FontProperties(**tick_font_kwargs)
     for label in ax.get_xticklabels() + ax.get_yticklabels():
         label.set_fontproperties(tick_font)
 
+    # AXIS LABELS #
+    plt.xlabel(generate_random_axis_label(dfu), color=tick_param_kwargs["labelcolor"])
+    plt.ylabel(generate_random_axis_label(dfu), color=tick_param_kwargs["labelcolor"])
+    ax.xaxis.get_label().set_font_properties(tick_font)
+    ax.yaxis.get_label().set_font_properties(tick_font)
+
+    # LEGEND #
+    if np.random.rand() < 0.35:
+        # legend_kwargs = build_kw_dict('data/plot_params/legend.csv')
+        plt.legend(
+            [dfu.sample(1).iloc[0].Name[:15]],
+            prop=tick_font,
+            labelcolor=tick_param_kwargs["labelcolor"]
+        )
+
     plt.tight_layout()
     
-    ### SAVE RAW AND LABELED IMAGES ###
+    # SAVE RAW AND LABELED IMAGES #
     fig.savefig(
         '{}/{}.png'.format(data_folder, id_str),
         facecolor=fig.get_facecolor(),
@@ -286,28 +327,25 @@ def generate_label_image(fig, ax, label_colors):
     so it can be used as input to Semantic Segmentation Suite... which I am not using anymore
     Also df_lc: dataframe of label colors that can be dumped to csv for the dataset
     """
-    
     mask_dict = {}
     # probably need some defensive code to check the label_colors dict
-    
     bg_color = np.array([int(c * 255) for c in fig.get_facecolor()])[:3].astype(np.uint8)
-
     kids = ax.get_children()
-    
-    ### MARKERS ###
-    visible = [0,1]
+
+    # MARKERS #
+    visible = [0, 1]
     for i in range(len(kids)):
         if i not in visible:
             kids[i].set_visible(False)
         else:
             kids[i].set_visible(True)
             kids[i].set_linestyle('None')
-    
+
     fig.canvas.draw()
     class_img = np.array(fig.canvas.renderer._renderer)[:, :, :3]
     mask_dict['markers'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
-    
-#     ### ERROR BARS ###
+
+#     # ERROR BARS #
 #     visible = [0,3,4]
 #     for i in range(len(kids)):
 #         if i not in visible:
@@ -319,48 +357,63 @@ def generate_label_image(fig, ax, label_colors):
 #     class_img = np.array(fig.canvas.renderer._renderer)[:,:,:3]
 #     mask_dict['error_bars'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
 
-    ### TICKS & LABELS ###
+    # TICKS, TICK LABELS AND AXIS LABELS #
     
     for aa in ['x', 'y']:
         axis = eval('ax.{}axis'.format(aa))
         mlf = copy.copy(axis.get_major_formatter())
-        
+
         # Make only the _axis visible
         [k.set_visible(False) for k in kids]
         axis.set_visible(True)
-        
-        # Make only the major ticks+grid visible
+
+        # Make only the major ticks visible
         [t.set_visible(False) for t in axis.get_minor_ticks()]
-        axis.set_major_formatter(plt.NullFormatter())
-        
+        [g.set_visible(False) for g in axis.get_gridlines()]  # Make gridlines invisible
+        axis.get_label().set_visible(False)
+        axis.set_major_formatter(plt.NullFormatter())  # This makes the tick labels invisible
+
         # Generate tick mask
         fig.canvas.draw_idle()
         class_img = np.array(fig.canvas.renderer._renderer)[:, :, :3]
         mask_dict[aa + '_ticks'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
-        
+
         # Make only the tick labels visible
-        axis.set_major_formatter(mlf)
-        [[ch.set_visible(False) for ch in tick.get_children() if not hasattr(ch, '_text')] for tick in axis.get_major_ticks()]
-        [g.set_visible(False) for g in axis.get_gridlines()]
-        
+        axis.set_major_formatter(mlf)  # This brings back the tick labels
+        [
+            [ch.set_visible(False) for ch in tick.get_children() if not hasattr(ch, '_text')]
+            for tick in axis.get_major_ticks()
+            ]
+
         # Generate label mask
         fig.canvas.draw_idle()
         class_img = np.array(fig.canvas.renderer._renderer)[:, :, :3]
-        cv2.imwrite('temp/label_test.png', class_img)
         mask_dict[aa + '_tick_labels'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
+
+        # Make only the axis labels visible
+        # axis.set_major_formatter(plt.NullFormatter())  # This makes the tick labels invisible
+        axis.set_tick_params(which="major", labelcolor=tuple(bg_color / 255))  # No, THIS makes the tick labels "invisible".. but it is irreversible
+        axis.get_label().set_visible(True)
+
+        # Generate axis label mask
+        fig.canvas.draw_idle()
+        class_img = np.array(fig.canvas.renderer._renderer)[:, :, :3]
+        cv2.imwrite('temp/label_test.png', class_img)
+        mask_dict[aa + '_axis_label'] = ~np.all(np.isclose(class_img, bg_color, rtol=0.01), axis=-1)
         
         # Reset visibilities
         [k.set_visible(True) for k in kids]
         [t.set_visible(True) for t in axis.get_major_ticks()]
         [t.set_visible(True) for t in axis.get_minor_ticks()]
         [g.set_visible(True) for g in axis.get_gridlines()]
-    
-    ### FINAL LABEL IMAGE ###
-    
+        axis.set_major_formatter(mlf)  # This brings back the tick labels
+        axis.get_label().set_visible(True)
+
+
+    # FINAL LABEL IMAGE #
     label_image = np.zeros(class_img.shape).astype(np.uint8)
     for kk, mm in mask_dict.items():
         label_image = set_color_mask(label_image, mm, label_colors[kk])
-    
     bg_mask = np.all(label_image == np.zeros(3).astype(np.uint8), axis=-1)
     label_image = set_color_mask(label_image, bg_mask, label_colors['background'])
 
@@ -383,21 +436,32 @@ def set_color_mask(A, M, c):
     return A
 
 
-### DISCRETE PARAMETERS ###
-dfd = pd.read_csv('data/plot_params/discrete.csv')
+def get_distribution_configs(
+    discrete_path="data/plot_params/discrete.csv",
+    continuous_path="data/plot_params/continuous.csv",
+    units_path="data/plot_params/units-of-measure.csv"
+):
+    """Retrieve the distribution config dataframes"""
 
-### CONTINUOUS PARAMETERS ###
-dfc = pd.read_csv('data/plot_params/continuous.csv', index_col='param')
-dfc['sampler'] = \
-    dfc.apply(
-        lambda row:
-            trunc_norm_sampler(
-                row['min'],
-                row['max'],
-                row['mean'],
-                row['n_stds']
-                ),
-        axis=1)
+    # DISCRETE PARAMETERS
+    dfd = pd.read_csv(discrete_path)
+    dfu = pd.read_csv(units_path)
+    dfu = dfu.dropna(subset="Symbol")
+    dfu = dfu[dfu["Name"].str.len() < 30]  # Don't want super long axis labels
+
+    # CONTINUOUS PARAMETERS
+    dfc = pd.read_csv(continuous_path, index_col='param')
+    dfc['sampler'] = \
+        dfc.apply(
+            lambda row:
+                trunc_norm_sampler(
+                    row['min'],
+                    row['max'],
+                    row['mean'],
+                    row['n_stds']
+                    ),
+            axis=1)
+    return dfd, dfc, dfu
 
 
 @click.command()
@@ -410,36 +474,42 @@ def generate_dataset(
     num_train=1000,
     num_val=400,
     num_test=400
-    ):
-    
+):
+    """Main function for plot dataset generation"""
     os.makedirs(base_folder, exist_ok=True)
 
-    ### SET LABEL PIXEL COLORS ###
+    # SET LABEL PIXEL COLORS FOR GROUND TRUTH MASKS
     label_colors = {
         'markers': str2color('xkcd:blue'),
         'x_ticks': str2color('xkcd:dark red'),
         'x_tick_labels': str2color('xkcd:red'),
-        'y_ticks': str2color('xkcd:violet'),
-        'y_tick_labels': str2color('xkcd:light purple'),
+        'x_axis_label': str2color('xkcd:light red'),
+        'y_ticks': str2color('xkcd:forest green'),
+        'y_tick_labels': str2color('xkcd:green'),
+        'y_axis_label': str2color('xkcd:light green'),
         'error_bars': str2color('xkcd:dark grey'),
         'background': str2color('xkcd:eggshell')
         }
-
-    label_ints = {
-        'markers': 0,
-        'x_ticks': 1,
-        'x_tick_labels': 2,
-        'y_ticks': 3,
-        'y_tick_labels': 4,
-        'error_bars': 5,
-        'background': 6
-        }
+    # label_ints = {
+    #     'markers': 0,
+    #     'x_ticks': 1,
+    #     'x_tick_labels': 2,
+    #     'x_axis_label': 3,
+    #     'y_ticks': 4,
+    #     'y_tick_labels': 5,
+    #     'y_axis_label': 6,
+    #     'error_bars': 7,
+    #     'background': 8
+    #     }
 
     df_lc = pd.DataFrame.from_dict(label_colors).transpose().reset_index()
     df_lc.columns = ['name', 'r', 'g', 'b']
     df_lc.to_csv(os.path.join(base_folder, 'class_dict.csv'), index=False)
 
-    ### GENERATE PLOT IMAGES AND CLASS LABEL IMAGES ###
+    # GET DISTRIBUTION CONFIGS
+    dfd, dfc, dfu = get_distribution_configs()
+
+    # GENERATE PLOT IMAGES AND CLASS LABEL IMAGES
     for dataset in ['train', 'test']:
         os.makedirs(os.path.join(base_folder, dataset), exist_ok=True)
         os.makedirs(os.path.join(base_folder, dataset + '_labels'), exist_ok=True)
@@ -451,7 +521,10 @@ def generate_dataset(
             fig, ax = generate_training_plot(
                 data_folder,
                 str(i).zfill(6),
-                label_colors
+                label_colors,
+                dfd,
+                dfc,
+                dfu
             )
             plt.close(fig)
 
