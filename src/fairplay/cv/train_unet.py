@@ -16,13 +16,15 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 import segmentation_models_pytorch as smp
 
+
 # --- Configuration ---
 def get_args():
     """Parses command-line arguments."""
     parser = argparse.ArgumentParser(description="Train UNet for plot segmentation.")
     
     # Use os.path.expanduser to handle '~'
-    default_data_path = os.path.expanduser('~/data/fairplay/231230-mpl5k')
+    default_data_path = os.path.expanduser('~/Library/CloudStorage/GoogleDrive-imperssonator@gmail.com/My Drive/data/231230-mpl5k')
+    default_runs_path = os.path.expanduser('~/Library/CloudStorage/GoogleDrive-imperssonator@gmail.com/My Drive/runs/fairplay')
     
     parser.add_argument(
         '--data_dir', 
@@ -33,7 +35,7 @@ def get_args():
     parser.add_argument(
         '--output_dir', 
         type=str, 
-        default='./runs', 
+        default=default_runs_path, 
         help='Directory to save outputs (checkpoints, logs, visualizations).'
     )
     parser.add_argument('--epochs', type=int, default=50, help='Number of training epochs.')
@@ -42,6 +44,7 @@ def get_args():
     parser.add_argument('--img_size', type=int, default=512, help='Image size for resizing.')
     
     return parser.parse_args()
+
 
 # --- Custom Dataset ---
 class PlotSegmentationDataset(Dataset):
@@ -93,6 +96,7 @@ class PlotSegmentationDataset(Dataset):
         
         return image, mask
 
+
 # --- Data Augmentation ---
 class SegmentationAugmentations:
     """
@@ -132,6 +136,7 @@ class SegmentationAugmentations:
         mask = torch.as_tensor(np.array(mask), dtype=torch.int64)
 
         return image, mask
+
 
 # --- Visualization ---
 def visualize(output_dir, image, true_mask, pred_mask, class_rgb_values):
@@ -174,6 +179,7 @@ def visualize(output_dir, image, true_mask, pred_mask, class_rgb_values):
     plt.savefig(output_dir / f"prediction_{timestamp}.png", dpi=300)
     plt.close(fig)
 
+
 # --- Training Loop ---
 def main():
     args = get_args()
@@ -191,7 +197,7 @@ def main():
     visuals_dir.mkdir(parents=True, exist_ok=True)
 
     # Setup device
-    device = torch.device("mps" if torch.backends.mps.is_available() else "cpu")
+    device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
     print(f"Using device: {device}")
 
     # Create Datasets and DataLoaders
@@ -267,32 +273,36 @@ def main():
 
         print(f"Epoch {epoch+1}/{args.epochs} -> Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
 
-        # Save the best model
+        # Save the best model and visualize its predictions
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             checkpoint_path = checkpoints_dir / "best_model.pth"
             torch.save(model.state_dict(), checkpoint_path)
             print(f"✅ New best model saved to {checkpoint_path}")
 
-    # Visualize a few predictions from the validation set
-    print("Generating visualizations...")
-    model.load_state_dict(torch.load(checkpoints_dir / "best_model.pth"))
-    model.eval()
-    with torch.no_grad():
-        for i, (images, masks) in enumerate(val_loader):
-            if i >= 3: break # Visualize 3 batches
-            images, masks = images.to(device), masks.to(device)
-            outputs = model(images)
-            preds = torch.argmax(outputs, dim=1)
-            
-            for j in range(images.size(0)):
-                visualize(
-                    visuals_dir,
-                    images[j],
-                    masks[j],
-                    preds[j],
-                    val_dataset.class_rgb_values
-                )
+            # Visualize predictions for the new best model from the first validation batch
+            print("📸 Generating visualization for new best model...")
+            model.eval() # Ensure model is in evaluation mode
+            with torch.no_grad():
+                # Get the first batch from the validation loader
+                try:
+                    images, masks = next(iter(val_loader))
+                    images, masks = images.to(device), masks.to(device)
+                    
+                    outputs = model(images)
+                    preds = torch.argmax(outputs, dim=1)
+                    
+                    # Visualize a few images from the batch to avoid clutter
+                    for j in range(min(4, images.size(0))): # Visualize up to 4 images
+                        visualize(
+                            visuals_dir,
+                            images[j],
+                            masks[j],
+                            preds[j],
+                            val_dataset.class_rgb_values
+                        )
+                except StopIteration:
+                    print("Could not generate visualization: validation loader is empty.")
 
     print(f"Training complete. All outputs saved in {output_dir}")
 

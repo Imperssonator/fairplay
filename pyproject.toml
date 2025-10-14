@@ -1,6 +1,49 @@
-[build-system]
-requires = [
-    "setuptools>=42",
-    "wheel"
+[project]
+
+name = "fairplay"
+version = "0.0.1"
+authors = [
+{name = "Nils Persson", email = "imperssonator@gmail.com"}
 ]
+description = "A library to extract data from plots"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+"Programming Language :: Python :: 3",
+"License :: OSI Approved :: MIT License",
+"Operating System :: OS Independent",
+]
+
+dependencies = [
+# For UNet Training
+"torch",
+"torchvision",
+"segmentation-models-pytorch",
+# For Dataset Generation & General Use
+"pandas>=1.3.2",
+"scipy>=1.7.1",
+"opencv-python>=4.5.3",
+"Pillow>=8.3.2",
+"numpy>=1.19.5",
+"matplotlib>=3.4.3",
+"click",
+"tqdm",
+]
+
+[project.urls]
+"Homepage" = "https://github.com/imperssonator/fairplay"
+"Bug Tracker" = "https://github.com/imperssonator/fairplay/issues"
+
+[project.scripts]
+generate-dataset = "fairplay.gen.generate_random_scatter:main"
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
 build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
