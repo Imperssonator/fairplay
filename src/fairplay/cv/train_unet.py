@@ -228,8 +228,20 @@ def main():
     print("Frozen encoder parameters for transfer learning.")
 
     # Loss function and optimizer
-    # CrossEntropyLoss is suitable for multi-class segmentation
-    criterion = nn.CrossEntropyLoss()
+    # Find the background class index to ignore it during loss calculation.
+    # This is crucial for handling class imbalance.
+    class_df = pd.read_csv(data_dir / 'class_dict.csv')
+    background_class_name = 'background' 
+    background_row = class_df[class_df['name'].str.contains(background_class_name, case=False, na=False)]
+    
+    background_index = -1 # Default to an invalid index
+    if not background_row.empty:
+        background_index = background_row.index[0]
+        print(f"✅ Found '{background_row.iloc[0]['name']}' at index {background_index}. This class will be ignored during training.")
+        criterion = nn.CrossEntropyLoss(ignore_index=background_index)
+    else:
+        print(f"⚠️ Warning: '{background_class_name}' class not found in class_dict.csv. Training without ignoring any class.")
+        criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
 
     # Training and validation loop
