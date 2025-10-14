@@ -42,6 +42,7 @@ def get_args():
     parser.add_argument('--batch_size', type=int, default=8, help='Batch size for training and validation.')
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate.')
     parser.add_argument('--img_size', type=int, default=512, help='Image size for resizing.')
+    parser.add_argument('--num_workers', type=int, default=2, help='Number of worker processes for data loading.')
     
     return parser.parse_args()
 
@@ -207,8 +208,8 @@ def main():
     train_dataset = PlotSegmentationDataset(data_dir, split='train', transforms=train_transforms, img_size=args.img_size)
     val_dataset = PlotSegmentationDataset(data_dir, split='val', transforms=val_transforms, img_size=args.img_size)
 
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4)
-    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=4)
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, num_workers=args.num_workers)
+    val_loader = DataLoader(val_dataset, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers)
 
     num_classes = len(train_dataset.class_rgb_values)
     print(f"Number of classes: {num_classes}")
