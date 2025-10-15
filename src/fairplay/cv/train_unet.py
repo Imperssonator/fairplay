@@ -43,6 +43,12 @@ def get_args():
     parser.add_argument('--lr', type=float, default=1e-4, help='Learning rate.')
     parser.add_argument('--img_size', type=int, default=512, help='Image size for resizing.')
     parser.add_argument('--num_workers', type=int, default=2, help='Number of worker processes for data loading.')
+    parser.add_argument(
+        '--resume_from',
+        type=str,
+        default=None,
+        help='Path to a previous run directory to resume training from (e.g., runs/fairplay/2023-01-01_12-00-00).'
+    )
     
     return parser.parse_args()
 
@@ -185,17 +191,23 @@ def visualize(output_dir, image, true_mask, pred_mask, class_rgb_values):
 def main():
     args = get_args()
     
-    # Setup paths
-    data_dir = Path(args.data_dir)
-    if not data_dir.exists():
-        print(f"Error: Data directory not found at {data_dir}")
-        return
-        
-    output_dir = Path(args.output_dir) / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    # --- Setup Paths ---
+    if args.resume_from:
+        output_dir = Path(args.resume_from)
+        print(f"Resuming training from: {output_dir}")
+    else:
+        output_dir = Path(args.output_dir) / datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+        print(f"Starting new training run. Outputs will be saved to: {output_dir}")
+
     checkpoints_dir = output_dir / "checkpoints"
     visuals_dir = output_dir / "visuals"
     checkpoints_dir.mkdir(parents=True, exist_ok=True)
     visuals_dir.mkdir(parents=True, exist_ok=True)
+    
+    data_dir = Path(args.data_dir)
+    if not data_dir.exists():
+        print(f"Error: Data directory not found at {data_dir}")
+        return
 
     # Setup device
     device = torch.device("cuda" if torch.cuda.is_available() else "mps" if torch.backends.mps.is_available() else "cpu")
@@ -244,11 +256,37 @@ def main():
         criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=args.lr)
 
-    # Training and validation loop
+    # --- Load Checkpoint if Resuming ---
+    start_epoch = 0
     best_val_loss = float('inf')
     history = {'train_loss': [], 'val_loss': []}
-    
-    for epoch in range(args.epochs):
+
+    if args.resume_from:
+        latest_checkpoint_path = checkpoints_dir / "latest_checkpoint.pth"
+        if latest_checkpoint_path.is_file():
+            print(f"Loading checkpoint from {latest_checkpoint_path}")
+            # Load checkpoint on the same device it was saved from
+            checkpoint = torch.load(latest_checkpoint_path, map_location=device)
+            
+            model.load_state_dict(checkpoint['model_state_dict'])
+            optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+            start_epoch = checkpoint['epoch'] + 1
+            best_val_loss = checkpoint['best_val_loss']
+            history = checkpoint['history']
+            
+            print(f"✅ Resuming training from epoch {start_epoch}.")
+        else:
+            print(f"⚠️ Warning: Checkpoint file not found at {latest_checkpoint_path}. Starting training from scratch.")
+
+
+    # Training and validation loop
+    for epoch in range(start_epoch, args.epochs):
+        # --- Unfreeze encoder after a few epochs ---
+        if epoch == 5: # Unfreeze after 5 epochs of training the decoder
+            for param in model.encoder.parameters():
+                param.requires_grad = True
+            print("Unfrozen encoder parameters. Fine-tuning the whole model.")
+
         model.train()
         train_loss = 0.0
         
@@ -286,12 +324,31 @@ def main():
 
         print(f"Epoch {epoch+1}/{args.epochs} -> Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
 
-        # Save the best model and visualize its predictions
+        # --- Save Checkpoints ---
+        # Save the latest checkpoint at the end of every epoch
+        latest_checkpoint_path = checkpoints_dir / "latest_checkpoint.pth"
+        torch.save({
+            'epoch': epoch,
+            'model_state_dict': model.state_dict(),
+            'optimizer_state_dict': optimizer.state_dict(),
+            'best_val_loss': best_val_loss,
+            'history': history,
+        }, latest_checkpoint_path)
+
+        # Save the best model based on validation loss and visualize its predictions
         if avg_val_loss < best_val_loss:
             best_val_loss = avg_val_loss
             checkpoint_path = checkpoints_dir / "best_model.pth"
             torch.save(model.state_dict(), checkpoint_path)
             print(f"✅ New best model saved to {checkpoint_path}")
+            # Update best_val_loss in the latest checkpoint as well
+            torch.save({
+                'epoch': epoch,
+                'model_state_dict': model.state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'best_val_loss': best_val_loss, # Updated value
+                'history': history,
+            }, latest_checkpoint_path)
 
             # Visualize predictions for the new best model from the first validation batch
             print("📸 Generating visualization for new best model...")
