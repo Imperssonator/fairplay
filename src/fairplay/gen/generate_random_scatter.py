@@ -313,9 +313,100 @@ def generate_training_plot(
     label_img_array = generate_label_image(fig, ax, label_colors)
     label_img = Image.fromarray(label_img_array)
     label_img.save('{}/{}.png'.format(data_folder + '_labels', id_str))
+
+    # SAVE BOUNDING BOXES
+    fig.canvas.draw() # Ensure the figure is rendered
+    bboxes = generate_bounding_boxes(fig, ax)
+    df_bboxes = pd.DataFrame([(k, *v) for k, val in bboxes.items() for v in val], columns=['class', 'x_min', 'y_min', 'x_max', 'y_max'])
+    df_bboxes.to_csv('{}/{}.csv'.format(data_folder + '_bboxes', id_str), index=False)
+
     
     return fig, ax
 
+def generate_bounding_boxes(fig, ax):
+    """
+    Given the Figure and Axes objects of a random plot,
+    return a dictionary of bounding boxes for each plot element.
+    The bounding boxes are in the format [x_min, y_min, x_max, y_max].
+    """
+    bboxes = {}
+    renderer = fig.canvas.get_renderer()
+    ax_bbox = ax.get_window_extent(renderer)
+
+    # Markers
+    marker_boxes = []
+    for line in ax.lines:
+        if line.get_marker() and line.get_marker() != 'None':
+            # For markers, get_window_extent() is not reliable.
+            # We transform data coordinates to display coordinates.
+            xy_data = line.get_xydata()
+            xy_pixels = ax.transData.transform(xy_data)
+            markersize = line.get_markersize()
+            # markersize is in points (1/72 inch). Convert to pixels.
+            box_size_px = markersize * fig.dpi / 72.0
+            for x_pix, y_pix in xy_pixels:
+                x0 = x_pix - box_size_px / 2.0
+                y0 = y_pix - box_size_px / 2.0
+                x1 = x_pix + box_size_px / 2.0
+                y1 = y_pix + box_size_px / 2.0
+                # Invert y-axis to match image coordinates (origin top-left)
+                h = fig.get_figheight() * fig.dpi
+                marker_boxes.append([x0, h - y1, x1, h - y0])
+    bboxes['markers'] = marker_boxes
+
+    # Error Bars
+    error_boxes = []
+    for container in ax.containers:
+        if isinstance(container, matplotlib.container.ErrorbarContainer):
+            for line_collection in container.lines:
+                # line_collection can be a LineCollection or a tuple of Line2D
+                if isinstance(line_collection, matplotlib.collections.LineCollection):
+                    for path in line_collection.get_paths():
+                        # path.get_extents() gives bbox in data coords
+                        bbox_data = path.get_extents()
+                        # transform to display coords
+                        bbox_disp = bbox_data.transformed(ax.transData)
+                        h = fig.get_figheight() * fig.dpi
+                        error_boxes.append([bbox_disp.x0, h - bbox_disp.y1, bbox_disp.x1, h - bbox_disp.y0])
+    bboxes['error_bars'] = error_boxes
+
+    # Ticks, Tick Labels, and Axis Labels
+    for aa in ['x', 'y']:
+        axis = getattr(ax, f'{aa}axis')
+        
+        # Tick marks
+        tick_boxes = []
+        for tick in axis.get_major_ticks():
+            # A tick is only visible if its location is within the axis limits
+            loc = tick.get_loc()
+            vmin, vmax = axis.get_view_interval()
+            if tick.get_visible() and vmin <= loc <= vmax:
+                tick_bbox = tick.tick1line.get_window_extent(renderer)
+                # Ensure the tick is actually within the axes bounds
+                if tick_bbox.width > 0 and tick_bbox.height > 0 and ax_bbox.overlaps(tick_bbox):
+                     h = fig.get_figheight() * fig.dpi
+                     tick_boxes.append([tick_bbox.x0, h - tick_bbox.y1, tick_bbox.x1, h - tick_bbox.y0])
+        bboxes[f'{aa}_ticks'] = tick_boxes
+        
+        # Tick labels
+        tick_label_boxes = []
+        # We iterate through the ticks, not the labels, to check their location.
+        for tick in axis.get_major_ticks():
+            loc = tick.get_loc()
+            vmin, vmax = axis.get_view_interval()
+            if tick.label1.get_visible() and tick.label1.get_text() and vmin <= loc <= vmax:
+                bbox = tick.label1.get_window_extent(renderer)
+                h = fig.get_figheight() * fig.dpi
+                tick_label_boxes.append([bbox.x0, h - bbox.y1, bbox.x1, h - bbox.y0])
+        bboxes[f'{aa}_tick_labels'] = tick_label_boxes
+
+        # Axis label
+        axis_label = axis.get_label()
+        bbox = axis_label.get_window_extent(renderer)
+        h = fig.get_figheight() * fig.dpi
+        bboxes[f'{aa}_axis_label'] = [[bbox.x0, h - bbox.y1, bbox.x1, h - bbox.y0]]
+
+    return bboxes
 
 def generate_label_image(fig, ax, label_colors):
     """
@@ -464,6 +555,55 @@ def get_distribution_configs(
     return dfd, dfc, dfu
 
 
+def display_bounding_boxes(base_folder, dataset, plot_id):
+    """
+    Displays a plot with its ground truth bounding boxes overlaid.
+
+    Args:
+        base_folder (str): The root folder of the dataset.
+        dataset (str): The dataset split, e.g., 'train' or 'test'.
+        plot_id (str): The identifier for the plot (e.g., '000000').
+    """
+
+    img_path = os.path.join(base_folder, dataset, f"{plot_id}.png")
+    bbox_path = os.path.join(base_folder, f"{dataset}_bboxes", f"{plot_id}.csv")
+
+    if not os.path.exists(img_path):
+        print(f"Error: Image not found at {img_path}")
+        return
+    if not os.path.exists(bbox_path):
+        print(f"Error: Bounding box data not found at {bbox_path}")
+        return
+
+    # Load the image and bounding box data
+    img = Image.open(img_path)
+    df_bboxes = pd.read_csv(bbox_path)
+
+    # Create a figure to display the image
+    fig, ax = plt.subplots(1, figsize=(12, 12 * (img.height / img.width)))
+    ax.imshow(img)
+
+    # Create a color map for the different classes
+    unique_classes = sorted(df_bboxes['class'].unique())
+    colors = plt.get_cmap('tab10')(np.linspace(0, 1, len(unique_classes)))
+    class_to_color = {cls: color for cls, color in zip(unique_classes, colors)}
+
+    # Add each bounding box to the plot
+    for _, row in df_bboxes.iterrows():
+        x_min, y_min, x_max, y_max = row['x_min'], row['y_min'], row['x_max'], row['y_max']
+        width = x_max - x_min
+        height = y_max - y_min
+        rect = matplotlib.patches.Rectangle(
+            (x_min, y_min), width, height,
+            linewidth=1.5, edgecolor=class_to_color[row['class']], facecolor='none', label=row['class']
+        )
+        ax.add_patch(rect)
+
+    ax.axis('off')
+    plt.tight_layout()
+    plt.show()
+
+
 @click.command()
 @click.argument('base_folder', type=click.Path())
 @click.option('--num-train', '-n', type=int, default=1000)
@@ -513,9 +653,11 @@ def generate_dataset(
     for dataset in ['train', 'test']:
         os.makedirs(os.path.join(base_folder, dataset), exist_ok=True)
         os.makedirs(os.path.join(base_folder, dataset + '_labels'), exist_ok=True)
+        os.makedirs(os.path.join(base_folder, dataset + '_bboxes'), exist_ok=True)
 
     for dataset in ['train', 'test']:
         print('Generating ', dataset)
+        num_to_gen = eval('num_' + dataset)
         for i in tqdm(range(eval('num_' + dataset))):
             data_folder = os.path.join(base_folder, dataset)
             fig, ax = generate_training_plot(

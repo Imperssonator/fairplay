@@ -19,6 +19,7 @@ dependencies = [
 "torch",
 "torchvision",
 "segmentation-models-pytorch",
+"ultralytics",
 # For Dataset Generation & General Use
 "pandas>=1.3.2",
 "scipy>=1.7.1",
@@ -30,12 +31,18 @@ dependencies = [
 "tqdm",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pyqt5",
+]
+
 [project.urls]
 "Homepage" = "https://github.com/imperssonator/fairplay"
 "Bug Tracker" = "https://github.com/imperssonator/fairplay/issues"
 
 [project.scripts]
-generate-dataset = "fairplay.gen.generate_random_scatter:main"
+generate-dataset = "fairplay.gen.generate_random_scatter:generate_dataset"
+verify-dataset = "fairplay.verify_dataset:verify"
 
 [build-system]
 requires = ["setuptools>=42", "wheel"]
@@ -46,4 +53,3 @@ package-dir = {"" = "src"}
 
 [tool.setuptools.packages.find]
 where = ["src"]
-
