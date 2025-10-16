@@ -105,7 +105,7 @@ def on_new_best_model(trainer): # This callback is only triggered if validation 
 
         # Run prediction on the batch
         # The model is already on the correct device
-        preds = trainer.model(batch['img'].to(trainer.device), verbose=False)
+        preds = trainer.model(batch['img'].to(trainer.device))
 
         # Plot and save up to 4 images from the batch
         num_to_visualize = min(len(preds), 4)
@@ -154,8 +154,6 @@ def main():
     with open(dataset_yaml, 'r') as f:
         data_config = yaml.safe_load(f)
     
-    run_validation = 'val' in data_config or 'test' in data_config
-
     run_validation = 'val' in data_config # Only validate if a 'val' split is explicitly defined
 
     model.train(
