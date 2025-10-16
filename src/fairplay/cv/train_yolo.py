@@ -80,7 +80,6 @@ def prepare_yolo_dataset(data_dir: Path):
     return dataset_yaml_path
 
 
-def on_new_best_model(trainer):
 def on_new_best_model(trainer): # This callback is only triggered if validation is run
     """
     Callback function to save prediction visualizations when a new best model is found.
