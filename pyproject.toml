@@ -43,6 +43,7 @@ dev = [
 [project.scripts]
 generate-dataset = "fairplay.gen.generate_random_scatter:generate_dataset"
 verify-dataset = "fairplay.verify_dataset:verify"
+convert-dataset = "fairplay.gen.convert_dataset:main"
 
 [build-system]
 requires = ["setuptools>=42", "wheel"]

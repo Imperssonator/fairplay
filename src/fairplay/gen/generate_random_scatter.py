@@ -8,6 +8,8 @@ import click
 from glob import glob
 import pandas as pd
 from tqdm import tqdm
+from pathlib import Path
+import yaml
 
 import numpy as np
 import scipy.stats as stats
@@ -603,6 +605,81 @@ def display_bounding_boxes(base_folder, dataset, plot_id):
     plt.tight_layout()
     plt.show()
 
+def convert_to_yolo_format(base_folder: str):
+    """
+    Converts the generated CSV bounding box data to YOLO's .txt format
+    and creates the dataset.yaml file. This is run after the main
+    dataset generation is complete.
+    """
+    print("\nConverting dataset to YOLO format...")
+    data_dir = Path(base_folder)
+
+    # --- 1. Find all unique classes and create a mapping ---
+    all_classes = set()
+    found_splits = []
+    for split_name in ['train', 'val', 'test']:
+        image_dir = data_dir / split_name
+        if not image_dir.is_dir():
+            continue
+        
+        found_splits.append(split_name)
+        bbox_dir = data_dir / f"{split_name}_bboxes"
+        if not bbox_dir.is_dir():
+            continue
+        for csv_file in bbox_dir.glob('*.csv'):
+            try:
+                df = pd.read_csv(csv_file)
+                if 'class' in df.columns:
+                    all_classes.update(df['class'].unique())
+            except pd.errors.EmptyDataError:
+                # It's possible to have an image with no bounding boxes, so the csv is empty.
+                pass
+
+    if not all_classes:
+        print("Warning: No classes found. Skipping YOLO format conversion.")
+        return
+
+    class_to_id = {name: i for i, name in enumerate(sorted(list(all_classes)))}
+    print(f"Found {len(class_to_id)} classes for YOLO conversion: {list(class_to_id.keys())}")
+
+    # --- 2. Convert CSVs to YOLO .txt format for existing splits ---
+    for split in found_splits:
+        image_dir = data_dir / split
+        bbox_dir = data_dir / f"{split}_bboxes"
+        label_dir = data_dir / "labels" / split
+        label_dir.mkdir(parents=True, exist_ok=True)
+        
+        print(f"Converting '{split}' split to YOLO format...")
+        for img_file in tqdm(list(image_dir.glob('*.png'))):
+            csv_file = bbox_dir / f"{img_file.stem}.csv"
+            txt_file = label_dir / f"{img_file.stem}.txt"
+
+            if not csv_file.exists(): continue
+
+            with Image.open(img_file) as img:
+                img_w, img_h = img.size
+
+            df = pd.read_csv(csv_file)
+            with open(txt_file, 'w') as f:
+                for _, row in df.iterrows():
+                    class_id = class_to_id[row['class']]
+                    box_w = row['x_max'] - row['x_min']
+                    box_h = row['y_max'] - row['y_min']
+                    x_center = (row['x_min'] + box_w / 2) / img_w
+                    y_center = (row['y_min'] + box_h / 2) / img_h
+                    width_norm = box_w / img_w
+                    height_norm = box_h / img_h
+                    f.write(f"{class_id} {x_center} {y_center} {width_norm} {height_norm}\n")
+
+    # --- 3. Create dataset.yaml ---
+    dataset_yaml_path = data_dir / "dataset.yaml"
+    yaml_content = {'path': str(data_dir.resolve()), 'names': {v: k for k, v in class_to_id.items()}}
+    for split in found_splits:
+        yaml_content[split] = split
+    
+    with open(dataset_yaml_path, 'w') as f:
+        yaml.dump(yaml_content, f, sort_keys=False)
+    print(f"✅ YOLO dataset preparation complete. Config file at: {dataset_yaml_path}")
 
 @click.command()
 @click.argument('base_folder', type=click.Path())
@@ -650,12 +727,13 @@ def generate_dataset(
     dfd, dfc, dfu = get_distribution_configs()
 
     # GENERATE PLOT IMAGES AND CLASS LABEL IMAGES
-    for dataset in ['train', 'test']:
+    splits_to_generate = [s for s in ['train', 'val', 'test'] if eval(f'num_{s}') > 0]
+    for dataset in splits_to_generate:
         os.makedirs(os.path.join(base_folder, dataset), exist_ok=True)
         os.makedirs(os.path.join(base_folder, dataset + '_labels'), exist_ok=True)
         os.makedirs(os.path.join(base_folder, dataset + '_bboxes'), exist_ok=True)
 
-    for dataset in ['train', 'test']:
+    for dataset in splits_to_generate:
         print('Generating ', dataset)
         num_to_gen = eval('num_' + dataset)
         for i in tqdm(range(eval('num_' + dataset))):
@@ -669,6 +747,9 @@ def generate_dataset(
                 dfu
             )
             plt.close(fig)
+
+    # Convert the generated dataset to YOLO format
+    convert_to_yolo_format(base_folder)
 
     return
 

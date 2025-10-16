@@ -42,92 +42,17 @@ def get_args():
 
 def prepare_yolo_dataset(data_dir: Path):
     """
-    Converts the CSV bounding box data to YOLO's .txt format and creates the dataset.yaml file.
+    Checks for the existence of the dataset.yaml file.
     
     Returns:
         Path to the generated dataset.yaml file.
     """
-    print("Preparing dataset for YOLO training...")
-    
-    # --- 1. Find all unique classes and create a mapping ---
-    # Also, determine which splits actually exist.
-    all_classes = set()
-    found_splits = []
-    for split_name in ['train', 'val', 'test']:
-        image_dir = data_dir / split_name
-        if not image_dir.is_dir():
-            continue
-        
-        found_splits.append(split_name)
-        bbox_dir = data_dir / f"{split_name}_bboxes"
-        for csv_file in bbox_dir.glob('*.csv'):
-            df = pd.read_csv(csv_file)
-            all_classes.update(df['class'].unique())
-    
-    class_to_id = {name: i for i, name in enumerate(sorted(list(all_classes)))}
-    print(f"Found splits: {found_splits}")
-    print(f"Found {len(class_to_id)} classes: {list(class_to_id.keys())}")
-    
-    # --- 2. Convert CSVs to YOLO .txt format for existing splits ---
-    for split in found_splits:
-        image_dir = data_dir / split
-        bbox_dir = data_dir / f"{split}_bboxes"
-        label_dir = data_dir / "labels" / split
-        
-        if not image_dir.is_dir():
-            print(f"Skipping '{split}' split, directory not found.")
-            continue
-            
-        label_dir.mkdir(parents=True, exist_ok=True)
-        
-        print(f"Converting '{split}' split...")
-        for img_file in tqdm(list(image_dir.glob('*.png'))):
-            csv_file = bbox_dir / f"{img_file.stem}.csv"
-            txt_file = label_dir / f"{img_file.stem}.txt"
-
-            if not csv_file.exists():
-                continue
-
-            # Get image dimensions for normalization
-            with Image.open(img_file) as img:
-                img_w, img_h = img.size
-
-            df = pd.read_csv(csv_file)
-            
-            with open(txt_file, 'w') as f:
-                for _, row in df.iterrows():
-                    class_id = class_to_id[row['class']]
-                    
-                    # Convert (xmin, ymin, xmax, ymax) to YOLO format (x_center, y_center, width, height)
-                    box_w = row['x_max'] - row['x_min']
-                    box_h = row['y_max'] - row['y_min']
-                    x_center = row['x_min'] + box_w / 2
-                    y_center = row['y_min'] + box_h / 2
-                    
-                    # Normalize
-                    x_center_norm = x_center / img_w
-                    y_center_norm = y_center / img_h
-                    width_norm = box_w / img_w
-                    height_norm = box_h / img_h
-                    
-                    f.write(f"{class_id} {x_center_norm} {y_center_norm} {width_norm} {height_norm}\n")
-
-    # --- 3. Create dataset.yaml ---
     dataset_yaml_path = data_dir / "dataset.yaml"
-    yaml_content = {
-        'path': str(data_dir.resolve()), # Ultralytics needs the absolute path
-        'names': {v: k for k, v in class_to_id.items()}
-    }
-    # Dynamically add the splits that were found
-    for split in found_splits:
-        yaml_content[split] = split
-    
-    print(f"Generated YAML content: {yaml_content}")
-    
-    with open(dataset_yaml_path, 'w') as f:
-        yaml.dump(yaml_content, f, sort_keys=False)
-        
-    print(f"✅ YOLO dataset preparation complete. Config file at: {dataset_yaml_path}")
+    if not dataset_yaml_path.exists():
+        print(f"Error: 'dataset.yaml' not found in {data_dir}.")
+        print("Please run the `convert-dataset` script on this directory first.")
+        return None
+    print(f"✅ Found YOLO dataset configuration at: {dataset_yaml_path}")
     return dataset_yaml_path
 
 
@@ -180,8 +105,10 @@ def main():
         print(f"Error: Data directory not found at {data_dir}")
         return
 
-    # Prepare the dataset (conversion and YAML creation)
+    # Check for the pre-converted dataset
     dataset_yaml = prepare_yolo_dataset(data_dir)
+    if not dataset_yaml:
+        return
 
     # Load the YOLO model
     model = YOLO(args.model)
@@ -199,8 +126,11 @@ def main():
     print(f"  - Run Name: {run_name}")
     print(f"  - Epochs: {args.epochs}, Batch Size: {args.batch_size}, Image Size: {args.img_size}")
     
-    # Determine if validation should be run
-    run_validation = 'val' in dataset_yaml.get('val', '') or 'test' in dataset_yaml.get('test', '')
+    # Determine if validation should be run by checking the yaml file
+    with open(dataset_yaml, 'r') as f:
+        data_config = yaml.safe_load(f)
+    
+    run_validation = 'val' in data_config or 'test' in data_config
 
     model.train(
         data=str(dataset_yaml),
