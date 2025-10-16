@@ -646,7 +646,8 @@ def convert_to_yolo_format(base_folder: str):
     for split in found_splits:
         image_dir = data_dir / split
         bbox_dir = data_dir / f"{split}_bboxes"
-        label_dir = data_dir / "labels" / split
+        # YOLO expects the 'labels' directory to be inside the split directory (e.g., train/labels/)
+        label_dir = image_dir / "labels"
         label_dir.mkdir(parents=True, exist_ok=True)
         
         print(f"Converting '{split}' split to YOLO format...")
@@ -675,7 +676,11 @@ def convert_to_yolo_format(base_folder: str):
     dataset_yaml_path = data_dir / "dataset.yaml"
     yaml_content = {'path': str(data_dir.resolve()), 'names': {v: k for k, v in class_to_id.items()}}
     for split in found_splits:
-        yaml_content[split] = split
+        # The path in the yaml should point to the images directory for each split
+        yaml_content[split] = f"{split}/images"
+        # Create the 'images' symlink/directory for consistency
+        (data_dir / split / 'images').mkdir(exist_ok=True)
+
     
     with open(dataset_yaml_path, 'w') as f:
         yaml.dump(yaml_content, f, sort_keys=False)
@@ -736,7 +741,7 @@ def generate_dataset(
     for dataset in splits_to_generate:
         print('Generating ', dataset)
         num_to_gen = eval('num_' + dataset)
-        for i in tqdm(range(eval('num_' + dataset))):
+        for i in tqdm(range(num_to_gen)):
             data_folder = os.path.join(base_folder, dataset)
             fig, ax = generate_training_plot(
                 data_folder,
