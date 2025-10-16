@@ -50,20 +50,26 @@ def prepare_yolo_dataset(data_dir: Path):
     print("Preparing dataset for YOLO training...")
     
     # --- 1. Find all unique classes and create a mapping ---
+    # Also, determine which splits actually exist.
     all_classes = set()
-    for split in ['train', 'test', 'val']:
-        bbox_dir = data_dir / f"{split}_bboxes"
-        if not bbox_dir.is_dir():
+    found_splits = []
+    for split_name in ['train', 'val', 'test']:
+        image_dir = data_dir / split_name
+        if not image_dir.is_dir():
             continue
+        
+        found_splits.append(split_name)
+        bbox_dir = data_dir / f"{split_name}_bboxes"
         for csv_file in bbox_dir.glob('*.csv'):
             df = pd.read_csv(csv_file)
             all_classes.update(df['class'].unique())
     
     class_to_id = {name: i for i, name in enumerate(sorted(list(all_classes)))}
+    print(f"Found splits: {found_splits}")
     print(f"Found {len(class_to_id)} classes: {list(class_to_id.keys())}")
-
-    # --- 2. Convert CSVs to YOLO .txt format ---
-    for split in ['train', 'test', 'val']:
+    
+    # --- 2. Convert CSVs to YOLO .txt format for existing splits ---
+    for split in found_splits:
         image_dir = data_dir / split
         bbox_dir = data_dir / f"{split}_bboxes"
         label_dir = data_dir / "labels" / split
@@ -109,12 +115,14 @@ def prepare_yolo_dataset(data_dir: Path):
     # --- 3. Create dataset.yaml ---
     dataset_yaml_path = data_dir / "dataset.yaml"
     yaml_content = {
-        'path': str(data_dir.resolve()),
-        'train': 'train',
-        'val': 'val',
-        'test': 'test',
+        'path': str(data_dir.resolve()), # Ultralytics needs the absolute path
         'names': {v: k for k, v in class_to_id.items()}
     }
+    # Dynamically add the splits that were found
+    for split in found_splits:
+        yaml_content[split] = split
+    
+    print(f"Generated YAML content: {yaml_content}")
     
     with open(dataset_yaml_path, 'w') as f:
         yaml.dump(yaml_content, f, sort_keys=False)
@@ -190,11 +198,15 @@ def main():
     print(f"  - Project: {args.output_dir}")
     print(f"  - Run Name: {run_name}")
     print(f"  - Epochs: {args.epochs}, Batch Size: {args.batch_size}, Image Size: {args.img_size}")
+    
+    # Determine if validation should be run
+    run_validation = 'val' in dataset_yaml.get('val', '') or 'test' in dataset_yaml.get('test', '')
 
     model.train(
         data=str(dataset_yaml),
         epochs=args.epochs,
         batch=args.batch_size,
+        val=run_validation, # Explicitly control validation
         imgsz=args.img_size,
         workers=args.num_workers,
         project=args.output_dir,
