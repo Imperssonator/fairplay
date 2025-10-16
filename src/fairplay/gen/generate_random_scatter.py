@@ -684,13 +684,13 @@ def convert_to_yolo_format(base_folder: str):
 @click.command()
 @click.argument('base_folder', type=click.Path())
 @click.option('--num-train', '-n', type=int, default=1000)
-@click.option('--num-val', '-v', type=int, default=400)
-@click.option('--num-test', '-t', type=int, default=400)
+@click.option('--num-val', '-v', type=int, default=400) # Default to 400 to ensure validation set by default
+@click.option('--num-test', '-t', type=int, default=0)  # Default to 0 to make test set optional
 def generate_dataset(
     base_folder,
     num_train=1000,
     num_val=400,
-    num_test=400
+    num_test=0
 ):
     """Main function for plot dataset generation"""
     os.makedirs(base_folder, exist_ok=True)

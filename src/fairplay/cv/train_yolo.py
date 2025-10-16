@@ -49,14 +49,39 @@ def prepare_yolo_dataset(data_dir: Path):
     """
     dataset_yaml_path = data_dir / "dataset.yaml"
     if not dataset_yaml_path.exists():
-        print(f"Error: 'dataset.yaml' not found in {data_dir}.")
+        print(f"Error: 'dataset.yaml' not found at {dataset_yaml_path}.")
         print("Please run the `convert-dataset` script on this directory first.")
         return None
-    print(f"✅ Found YOLO dataset configuration at: {dataset_yaml_path}")
+
+    with open(dataset_yaml_path, 'r') as f:
+        data_config = yaml.safe_load(f)
+
+    # --- Update the 'path' in dataset.yaml to the current data_dir ---
+    current_data_path = str(data_dir.resolve())
+    if data_config.get('path') != current_data_path:
+        print(f"Updating 'path' in dataset.yaml from '{data_config.get('path')}' to '{current_data_path}'")
+        data_config['path'] = current_data_path
+        with open(dataset_yaml_path, 'w') as f:
+            yaml.dump(data_config, f, sort_keys=False)
+        print(f"✅ Updated dataset.yaml with new base path.")
+    else:
+        print(f"✅ 'path' in dataset.yaml is already correct: '{current_data_path}'")
+
+    # Validate paths listed in dataset.yaml
+    for split_key in ['train', 'val', 'test']:
+        if split_key in data_config:
+            split_path = data_dir / data_config[split_key]
+            if not split_path.is_dir():
+                print(f"Error: Dataset '{split_key}' path '{split_path}' specified in 'dataset.yaml' does not exist.")
+                print("Please ensure the directory exists or re-run `convert-dataset` to update `dataset.yaml`.")
+                return None
+    
+    print(f"✅ Found and validated YOLO dataset configuration at: {dataset_yaml_path}")
     return dataset_yaml_path
 
 
 def on_new_best_model(trainer):
+def on_new_best_model(trainer): # This callback is only triggered if validation is run
     """
     Callback function to save prediction visualizations when a new best model is found.
     This is triggered at the end of each validation epoch.
@@ -131,6 +156,8 @@ def main():
         data_config = yaml.safe_load(f)
     
     run_validation = 'val' in data_config or 'test' in data_config
+
+    run_validation = 'val' in data_config # Only validate if a 'val' split is explicitly defined
 
     model.train(
         data=str(dataset_yaml),
