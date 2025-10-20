@@ -644,7 +644,8 @@ def convert_to_yolo_format(base_folder: str):
 
     # --- 2. Convert CSVs to YOLO .txt format for existing splits ---
     for split in found_splits:
-        image_dir = data_dir / split
+        # Images are now in the 'images' subdirectory
+        image_dir = data_dir / split / "images"
         bbox_dir = data_dir / f"{split}_bboxes"
         # YOLO expects the 'labels' directory to be inside the split directory (e.g., train/labels/)
         label_dir = image_dir / "labels"
@@ -670,16 +671,17 @@ def convert_to_yolo_format(base_folder: str):
                     y_center = (row['y_min'] + box_h / 2) / img_h
                     width_norm = box_w / img_w
                     height_norm = box_h / img_h
+                    
+                    # Clamp values to be strictly within [0, 1] to avoid corruption errors
+                    x_center = np.clip(x_center, 0, 1)
+                    y_center = np.clip(y_center, 0, 1)
                     f.write(f"{class_id} {x_center} {y_center} {width_norm} {height_norm}\n")
 
     # --- 3. Create dataset.yaml ---
     dataset_yaml_path = data_dir / "dataset.yaml"
     yaml_content = {'path': str(data_dir.resolve()), 'names': {v: k for k, v in class_to_id.items()}}
     for split in found_splits:
-        # The path in the yaml should point to the images directory for each split
-        yaml_content[split] = f"{split}/images"
-        # Create the 'images' symlink/directory for consistency
-        (data_dir / split / 'images').mkdir(exist_ok=True)
+        yaml_content[split] = f"{split}/images" # The images are in the 'images' subdirectory
 
     
     with open(dataset_yaml_path, 'w') as f:
@@ -734,7 +736,8 @@ def generate_dataset(
     # GENERATE PLOT IMAGES AND CLASS LABEL IMAGES
     splits_to_generate = [s for s in ['train', 'val', 'test'] if eval(f'num_{s}') > 0]
     for dataset in splits_to_generate:
-        os.makedirs(os.path.join(base_folder, dataset), exist_ok=True)
+        # Create the 'images' subdirectory for the plots
+        os.makedirs(os.path.join(base_folder, dataset, 'images'), exist_ok=True)
         os.makedirs(os.path.join(base_folder, dataset + '_labels'), exist_ok=True)
         os.makedirs(os.path.join(base_folder, dataset + '_bboxes'), exist_ok=True)
 
@@ -742,7 +745,7 @@ def generate_dataset(
         print('Generating ', dataset)
         num_to_gen = eval('num_' + dataset)
         for i in tqdm(range(num_to_gen)):
-            data_folder = os.path.join(base_folder, dataset)
+            data_folder = os.path.join(base_folder, dataset, 'images')
             fig, ax = generate_training_plot(
                 data_folder,
                 str(i).zfill(6),

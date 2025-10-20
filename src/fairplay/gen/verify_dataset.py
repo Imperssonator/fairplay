@@ -31,7 +31,7 @@ def verify(base_folder, dataset, num_images, backend):
                 print("Warning: Could not find 'TkAgg' or 'Qt5Agg' backend.")
                 print("You may need to install a GUI toolkit for matplotlib, e.g., `pip install pyqt5`.")
 
-    image_folder = os.path.join(base_folder, dataset)
+    image_folder = os.path.join(base_folder, dataset, 'images')
     if not os.path.isdir(image_folder):
         print(f"Error: Image directory not found at '{image_folder}'")
         return
