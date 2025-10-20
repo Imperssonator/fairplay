@@ -111,7 +111,7 @@ def on_new_best_model(trainer): # This callback is only triggered if validation 
         # 1. Get raw predictions (a tensor) from the model
         raw_preds = trainer.model.predict(img_tensor)
         # 2. Post-process the raw predictions to get Results objects with .plot()
-        preds = trainer.validator.postprocess(raw_preds, batch)
+        preds = trainer.validator.postprocess(raw_preds)
         
         # Plot and save up to 4 images from the batch
         num_to_visualize = min(len(preds), 4)

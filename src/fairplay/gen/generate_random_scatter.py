@@ -646,9 +646,9 @@ def convert_to_yolo_format(base_folder: str):
     for split in found_splits:
         # Images are now in the 'images' subdirectory
         image_dir = data_dir / split / "images"
-        bbox_dir = data_dir / f"{split}_bboxes"
-        # YOLO expects the 'labels' directory to be inside the split directory (e.g., train/labels/)
-        label_dir = image_dir / "labels"
+        bbox_dir = data_dir / f"{split}_bboxes" # e.g., <base>/train_bboxes
+        # YOLO expects the 'labels' directory to be a sibling of 'images' (e.g., <base>/train/labels/)
+        label_dir = data_dir / split / "labels"
         label_dir.mkdir(parents=True, exist_ok=True)
         
         print(f"Converting '{split}' split to YOLO format...")
