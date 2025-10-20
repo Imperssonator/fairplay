@@ -109,7 +109,7 @@ def on_new_best_model(trainer): # This callback is only triggered if validation 
         img_tensor = batch['img'].to(trainer.device).float() / 255.0
         # Use the high-level model call which handles prediction and post-processing
         # to get a list of plottable Results objects.
-        preds = trainer.model(img_tensor, verbose=False)
+        preds = trainer.model(img_tensor)
         
         # Plot and save up to 4 images from the batch
         num_to_visualize = min(len(preds), 4)
