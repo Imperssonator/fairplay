@@ -108,7 +108,7 @@ def on_new_best_model(trainer): # This callback is only triggered if validation 
         # The image tensor from the dataloader might be uint8, so convert to float and normalize
         img_tensor = batch['img'].to(trainer.device).float() / 255.0
         # Use the model's predict() method to get Results objects
-        preds = trainer.model.predict(img_tensor, verbose=False)
+        preds = trainer.model.predict(img_tensor)
 
         # Plot and save up to 4 images from the batch
         num_to_visualize = min(len(preds), 4)
